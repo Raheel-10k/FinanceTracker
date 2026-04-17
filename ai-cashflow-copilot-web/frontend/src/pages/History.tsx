@@ -55,7 +55,7 @@ export default function History() {
               </div>
               <div>
                 <p className="text-[10px] text-secondaryText uppercase mb-1">Runway</p>
-                <p className="font-semibold text-white">{Math.floor((new Date(item.runwayDate).getTime() - Date.now()) / 86400000)}s</p>
+                <p className="font-semibold text-white">{Math.floor((new Date(item.runwayDate).getTime() - Date.now()) / 86400000)}d</p>
               </div>
             </div>
           </Card>
