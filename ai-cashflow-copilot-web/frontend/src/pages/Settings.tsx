@@ -1,12 +1,27 @@
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/Card';
+import api from '../services/api';
+import { useAppStore } from '../store/useAppStore';
 
 export default function Settings() {
   const navigate = useNavigate();
+  const setToken = useAppStore(state => state.setToken);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    setToken(null);
     navigate('/');
+  };
+
+  const handleDeleteData = async () => {
+    if(confirm("Are you sure you want to delete all uploaded statements and history?")) {
+        try {
+            await api.delete('/user/data');
+            alert('Data deleted successfully');
+            window.location.reload();
+        } catch(e) {
+            alert('Failed to delete data');
+        }
+    }
   };
 
   return (
@@ -29,7 +44,9 @@ export default function Settings() {
         </Card>
 
         <Card className="p-0 overflow-hidden divide-y divide-white/5 border-danger/20">
-          <button className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors group">
+          <button 
+             onClick={handleDeleteData}
+             className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors group">
             <span className="text-sm font-medium text-danger group-hover:text-red-400">Delete My Data</span>
           </button>
           

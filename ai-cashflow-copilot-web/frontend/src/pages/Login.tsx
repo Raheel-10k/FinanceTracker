@@ -1,15 +1,29 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
+import { useAppStore } from '../store/useAppStore';
 
 export default function Login() {
   const navigate = useNavigate();
+  const setToken = useAppStore(state => state.setToken);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(email && password) {
+    if(!email || !password) return;
+    setLoading(true);
+    setError('');
+    try {
+      const res = await api.post('/auth/login', { email, password });
+      setToken(res.data.token);
       navigate('/app');
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Login failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -36,11 +50,13 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
             className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-5 text-white placeholder:text-secondaryText focus:outline-none focus:border-white/30 transition-colors"
           />
+          {error && <p className="text-sm text-danger">{error}</p>}
           <button 
             type="submit"
-            className="w-full h-14 bg-white text-black font-semibold rounded-2xl mt-4 active:scale-95 transition-transform"
+            disabled={loading}
+            className="w-full h-14 bg-white text-black font-semibold rounded-2xl mt-4 active:scale-95 transition-transform disabled:opacity-50"
           >
-            Continue
+            {loading ? 'Continuing...' : 'Continue'}
           </button>
         </form>
 
