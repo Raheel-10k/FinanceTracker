@@ -117,25 +117,20 @@ export const extractTransactionsFromText = async (text: string): Promise<any[]> 
     throw new Error("API Key missing. Cannot parse raw statement text.");
   }
 
-  const prompt = `You are an expert, highly accurate financial data extraction parser.
-Below is the raw, unformatted text extracted directly from a bank statement PDF. It may contain headers, footers, disclaimers, account summaries, and messy line breaks.
+  const prompt = `Extract ALL bank transactions from the following raw PDF text.
+Find EVERY line or block that contains a Date and an Amount, and treat it as a transaction.
+Even if the text is messy, extract the date, details/description, and the amount.
+Determine if it's a 'credit' (money added to account) or 'debit' (money spent/withdrawn).
 
-YOUR EXPLICIT TASK:
-1. Scan the text meticulously and identify ONLY individual financial transactions (debits and credits).
-2. Ignore opening balances, closing balances, page numbers, tables of contents, or summary boxes. Look specifically for tabular data rows containing a Date, a Description/Narration, and an Amount. 
-3. Determine the 'type' ("credit" or "debit"). Often, if an amount is under a "Withdrawal/Debit" column it is a debit. If under "Deposit/Credit", it is a credit. If there is a 'Cr' or 'Dr' suffix on the amount, parse accordingly.
-4. Clean all amounts into pure positive Float numbers (e.g., "1,234.50" -> 1234.5).
-5. If a trailing balance is provided on the row, include it as a clean float. If missing, set it to 0.
-
-You MUST return the extracted transactions as a JSON object strictly matching this schema exactly:
+You MUST output a JSON object strictly matching this schema exactly:
 {
   "transactions": [
     {
       "date": "YYYY-MM-DD",
-      "description": "String (the name or details of the transaction)",
+      "description": "String (transaction details)",
       "type": "credit" or "debit",
       "amount": Number (positive float),
-      "balance": Number (the balance after transaction, or 0)
+      "balance": Number (balance if found, else 0)
     }
   ]
 }
@@ -147,7 +142,8 @@ ${String(text)}`;
     console.log(`[Groq API] Requesting transaction extraction from raw text...`);
     const chatCompletion = await groq.chat.completions.create({
       messages: [{ role: "user", content: prompt }],
-      model: "meta-llama/llama-4-scout-17b-16e-instruct"
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      max_tokens: 8192
     });
 
     let responseText = chatCompletion.choices[0]?.message?.content || "{}";
