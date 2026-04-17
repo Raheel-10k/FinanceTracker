@@ -60,21 +60,43 @@ export const uploadStatement = async (req: Request, res: Response) => {
     // Deterministic Analysis
     const totalCredits = txsData.filter(t => t.type === 'credit').reduce((sum, t) => sum + t.amount, 0);
     const totalDebits = txsData.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount, 0);
-    const retainedBalance = totalCredits - totalDebits;
     
-    // Sort logic to find max dates etc. (assuming we have 30 days)
-    const daysAssuming = 30;
-    const burnRate = totalDebits / daysAssuming;
-    const currentBalance = txsData[0]?.balance || 0; // Take newest tx balance if sorted appropriately
+    // Sort logic to find true date span
+    const sortedTxs = [...txsData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const firstDateMs = new Date(sortedTxs[0].date).getTime();
+    const lastDateMs = new Date(sortedTxs[sortedTxs.length - 1].date).getTime();
+    
+    let actualDaysSpanned = Math.ceil((lastDateMs - firstDateMs) / (1000 * 60 * 60 * 24));
+    if (actualDaysSpanned < 1 || isNaN(actualDaysSpanned)) actualDaysSpanned = 30;
+    
+    const burnRate = totalDebits / actualDaysSpanned;
+    
+    // Check if the AI managed to pull a real trailing balance value
+    let currentBalance = [...sortedTxs].reverse().find(t => t.balance && t.balance > 0)?.balance || 0;
+    
+    // If the bank statement didn't have readable balances, formulate a theoretical max balance from credits
+    if (currentBalance === 0) {
+      currentBalance = Math.max(totalCredits, totalDebits + 5000); // Baseline buffer for demo prototype
+    }
+
     const runway = burnRate > 0 ? Math.floor(currentBalance / burnRate) : 999;
+    const retainedBalance = currentBalance;
     
-    const microLeaksTxs = txsData.filter(t => t.type === 'debit' && t.amount <= 200);
+    const microLeaksTxs = txsData.filter(t => t.type === 'debit' && t.amount <= 200).map(t => ({
+      date: t.date,
+      description: t.description,
+      amount: t.amount
+    }));
     const microLeakAmount = microLeaksTxs.reduce((s, t) => s + t.amount, 0);
     const largestSpend = Math.max(...txsData.filter(t => t.type === 'debit').map(t => t.amount), 0);
 
     // Heuristics Score calculation
     let survivalScore = Math.min(100, Math.max(0, Math.floor((runway / 30) * 100)));
     let guiltScore = Math.min(100, Math.floor((microLeakAmount / Math.max(1, totalDebits)) * 100) + (burnRate > 1000 ? 50 : 0));
+    
+    if (runway <= 0) guiltScore = Math.max(guiltScore, 95);
+    else if (runway <= 5) guiltScore = Math.max(guiltScore, 85);
+    else if (runway <= 15) guiltScore = Math.max(guiltScore, 65);
     
     const aiResp = await generateAIInsights({
       burnRate: Math.round(burnRate),
@@ -108,7 +130,8 @@ export const uploadStatement = async (req: Request, res: Response) => {
       },
       aiNarrative: aiResp.aiNarrative,
       simulatorAdvice: aiResp.recommendation,
-      insights: aiResp.insights
+      insights: aiResp.insights,
+      microLeakTransactions: microLeaksTxs
     });
     await report.save();
 

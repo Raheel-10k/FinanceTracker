@@ -93,6 +93,9 @@ export default function Home() {
           <div>
             <h3 className="text-sm font-medium text-secondaryText mb-1">Survival Score</h3>
             <p className="text-xs text-secondaryText">Based on runway & behavior</p>
+            <p className={`text-[11px] mt-1.5 font-medium ${report.survivalScore > 75 ? 'text-success' : report.survivalScore < 40 ? 'text-danger' : 'text-blue-400'}`}>
+              {report.survivalScore > 75 ? 'Looking highly stable 🚀' : report.survivalScore < 40 ? 'Severe risk detected ⚠️' : 'Pacing moderately well'}
+            </p>
           </div>
           <div className="w-16 h-16 rounded-full border-[4px] border-white flex items-center justify-center relative shadow-[0_0_15px_rgba(255,255,255,0.1)]">
             <span className="text-xl font-semibold text-white">{report.survivalScore}</span>

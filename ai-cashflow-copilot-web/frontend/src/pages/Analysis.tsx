@@ -32,12 +32,32 @@ export default function Analysis() {
             <span className="text-secondaryText">Net retained</span>
             <span className="text-white font-medium">₹{summary.retainedBalance.toLocaleString()}</span>
           </div>
-          <div className="flex justify-between pt-1">
+          <div className="flex justify-between pt-1 pb-2 border-b border-white/5">
             <span className="text-secondaryText">Transactions</span>
             <span className="text-white">{summary.txCount}</span>
           </div>
+          <div className="flex justify-between pt-1">
+            <span className="text-secondaryText text-xs">Burn Rate Formula</span>
+            <span className="text-white/60 text-xs text-right">
+               ∑ Debits (₹{summary.totalDebits.toLocaleString()}) <br/> / {Math.max(1, Math.round(summary.totalDebits / (summary.averageDailySpend || 1)))} Days
+            </span>
+          </div>
         </Card>
       </section>
+
+      {report.microLeakTransactions && report.microLeakTransactions.length > 0 && (
+        <section className="space-y-4">
+          <h2 className="text-lg font-medium text-white/90">Identified Micro Leaks</h2>
+          <Card className="divide-y divide-white/5 space-y-2 max-h-64 overflow-y-auto">
+            {report.microLeakTransactions.map((tx: any, idx: number) => (
+              <div key={idx} className="flex justify-between items-center pt-2">
+                 <span className="text-sm text-secondaryText truncate max-w-[200px]">{tx.description || "Vendor"}</span>
+                 <span className="text-sm text-danger font-medium">-₹{tx.amount}</span>
+              </div>
+            ))}
+          </Card>
+        </section>
+      )}
 
       <section className="space-y-4">
         <h2 className="text-lg font-medium text-white/90">Behavioral Insights</h2>

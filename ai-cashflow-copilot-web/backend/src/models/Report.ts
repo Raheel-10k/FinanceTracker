@@ -21,7 +21,12 @@ const reportSchema = new mongoose.Schema({
   },
   aiNarrative: { type: String },
   simulatorAdvice: { type: String },
-  insights: [{ type: String }]
+  insights: [{ type: String }],
+  microLeakTransactions: [{
+    date: Date,
+    description: String,
+    amount: Number
+  }]
 }, { timestamps: true });
 
 export const Report = mongoose.model('Report', reportSchema);
