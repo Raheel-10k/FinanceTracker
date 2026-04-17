@@ -111,6 +111,40 @@ Return ONLY 1 short sentence (max 15 words) of advice about this simulation.`;
   }
 };
 
+export const chatWithSimulator = async (report: any, message: string, pastChats: any[] = []) => {
+  if (!process.env.GROQ_API_KEY) return "Chat simulated advice is offline without an API key.";
+  
+  const prompt = `You are an expert financial consultant built into an AI Cashflow Copilot.
+User's Current Profile:
+Runway: ${Math.max(0, Math.floor((new Date(report.runwayDate).getTime() - Date.now()) / 86400000))} days
+Survival Score: ${report.survivalScore}
+Active Balance: ₹${report.statementSummary?.retainedBalance || 0}
+Burn Rate: ₹${report.burnRate}/day
+
+Give a sharp, realistic, and brutally honest 2-3 sentence financial projection breaking down exactly how the user's proposed decision explicitly impacts their runway or survival rate. Calculate the math if applicable.`;
+
+  const messages: any[] = [{ role: "system", content: prompt }];
+  
+  pastChats.forEach(chat => {
+    messages.push({ role: chat.role, content: chat.content });
+  });
+
+  // Since pastChats already includes the latest user message from the DB controller save, we don't duplicate it.
+  // Unless the controller didn't save it yet. The controller saved it, so we rely on pastChats.
+  // Wait, if pastChats has it, we just send messages Array.
+  
+  try {
+    const chatCompletion = await groq.chat.completions.create({
+      messages: messages,
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    });
+    return chatCompletion.choices[0]?.message?.content?.trim() || "I'm unable to process this right now.";
+  } catch (error: any) {
+    console.error(`[Groq API Error] Failed simulator chat:`, error.message);
+    return "That purchase will heavily impact your already constrained runway. Plan carefully.";
+  }
+};
+
 export const extractTransactionsFromText = async (text: string): Promise<any[]> => {
   if (!process.env.GROQ_API_KEY) {
     console.error(`[Groq API Error] API Key missing. Cannot parse raw statement text.`);

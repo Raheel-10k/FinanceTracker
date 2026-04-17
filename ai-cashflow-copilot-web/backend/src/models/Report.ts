@@ -17,7 +17,8 @@ const reportSchema = new mongoose.Schema({
     retainedBalance: Number,
     txCount: Number,
     largestSpend: Number,
-    averageDailySpend: Number
+    averageDailySpend: Number,
+    actualDaysSpanned: Number
   },
   aiNarrative: { type: String },
   simulatorAdvice: { type: String },
@@ -25,7 +26,8 @@ const reportSchema = new mongoose.Schema({
   microLeakTransactions: [{
     date: Date,
     description: String,
-    amount: Number
+    amount: Number,
+    hoverMessage: String
   }]
 }, { timestamps: true });
 

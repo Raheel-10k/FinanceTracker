@@ -61,17 +61,32 @@ export const uploadStatement = async (req: Request, res: Response) => {
     const totalCredits = txsData.filter(t => t.type === 'credit').reduce((sum, t) => sum + t.amount, 0);
     const totalDebits = txsData.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount, 0);
     
-    // Sort logic to find true date span
     const sortedTxs = [...txsData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    const firstDateMs = new Date(sortedTxs[0].date).getTime();
-    const lastDateMs = new Date(sortedTxs[sortedTxs.length - 1].date).getTime();
+    let firstDateMs = new Date(sortedTxs[0].date).getTime();
+    let lastDateMs = new Date(sortedTxs[sortedTxs.length - 1].date).getTime();
     
-    let actualDaysSpanned = Math.ceil((lastDateMs - firstDateMs) / (1000 * 60 * 60 * 24));
-    if (actualDaysSpanned < 1 || isNaN(actualDaysSpanned)) actualDaysSpanned = 30;
+    // The AI might aggressively hallucinate 30-day bounds using memory from previous generations. 
+    // Securely pull bounds from the filename parameters if they exist!
+    let actualDaysSpanned = 0;
+    const fileDateMatch = file.originalname.match(/_(\d{2}-[a-zA-Z]{3}-\d{4})_(\d{2}-[a-zA-Z]{3}-\d{4})/);
+    if (fileDateMatch && fileDateMatch.length === 3) {
+      const explicitStart = new Date(fileDateMatch[1]).getTime();
+      const explicitEnd = new Date(fileDateMatch[2]).getTime();
+      if (!isNaN(explicitStart) && !isNaN(explicitEnd)) {
+         actualDaysSpanned = Math.ceil((explicitEnd - explicitStart) / (1000 * 60 * 60 * 24)) + 1;
+      }
+    }
+    
+    // If filename regex fails, organically fall back to matrix matching dates
+    if (actualDaysSpanned < 1 || isNaN(actualDaysSpanned)) {
+       actualDaysSpanned = Math.ceil((lastDateMs - firstDateMs) / (1000 * 60 * 60 * 24)) + 1;
+    }
+    
+    if (actualDaysSpanned < 1 || isNaN(actualDaysSpanned)) actualDaysSpanned = 17; // Smart fallback
     
     const burnRate = totalDebits / actualDaysSpanned;
     
-    // Check if the AI managed to pull a real trailing balance value
+    // Check if the AI managed to pull a real trailing balance value natively
     let currentBalance = [...sortedTxs].reverse().find(t => t.balance && t.balance > 0)?.balance || 0;
     
     // If the bank statement didn't have readable balances, formulate a theoretical max balance from credits
@@ -80,13 +95,29 @@ export const uploadStatement = async (req: Request, res: Response) => {
     }
 
     const runway = burnRate > 0 ? Math.floor(currentBalance / burnRate) : 999;
-    const retainedBalance = currentBalance;
     
-    const microLeaksTxs = txsData.filter(t => t.type === 'debit' && t.amount <= 200).map(t => ({
-      date: t.date,
-      description: t.description,
-      amount: t.amount
-    }));
+    // Net retained over the cycle is explicitly Inflow minus Outflow
+    const retainedBalance = totalCredits - totalDebits;
+    
+    const microLeaksTxs = txsData.filter(t => t.type === 'debit' && t.amount <= 200).map(t => {
+      const sameAmountCount = txsData.filter(tx => tx.amount === t.amount).length;
+      let hoverMsg = "Was this really a necessary transaction?";
+      
+      if (sameAmountCount > 3) {
+        hoverMsg = "Do you truly need to make this exact payment repeatedly?";
+      } else if (t.amount > 150) {
+        hoverMsg = "Could've easily avoided this spend and saved up.";
+      } else if (sameAmountCount > 1) {
+        hoverMsg = "Isn't this an unusual recurring habit?";
+      }
+
+      return {
+        date: t.date,
+        description: t.description,
+        amount: t.amount,
+        hoverMessage: hoverMsg
+      };
+    });
     const microLeakAmount = microLeaksTxs.reduce((s, t) => s + t.amount, 0);
     const largestSpend = Math.max(...txsData.filter(t => t.type === 'debit').map(t => t.amount), 0);
 
@@ -126,7 +157,8 @@ export const uploadStatement = async (req: Request, res: Response) => {
         retainedBalance,
         txCount: txsData.length,
         largestSpend,
-        averageDailySpend: Math.round(burnRate)
+        averageDailySpend: Math.round(burnRate),
+        actualDaysSpanned // explicitly expose for calculations
       },
       aiNarrative: aiResp.aiNarrative,
       simulatorAdvice: aiResp.recommendation,

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Card from '../components/Card';
 import GuiltMeter from '../components/GuiltMeter';
 import api from '../services/api';
@@ -11,6 +11,14 @@ export default function Simulator() {
   const [extraIncome, setExtraIncome] = useState(0);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [chatting, setChatting] = useState(false);
+  
+  useEffect(() => {
+     api.get('/simulate/chat').then(res => setChatHistory(res.data.chats)).catch(console.error);
+  }, []);
 
   const simulate = async () => {
     setLoading(true);
@@ -25,6 +33,25 @@ export default function Simulator() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runChat = async () => {
+    if (!chatMessage.trim()) return;
+    
+    const newMessage = { role: 'user', content: chatMessage };
+    setChatHistory(prev => [...prev, newMessage]);
+    setChatMessage('');
+    setChatting(true);
+    
+    try {
+      const res = await api.post('/simulate/chat', { message: newMessage.content });
+      setChatHistory(prev => [...prev, { role: 'assistant', content: res.data.reply }]);
+    } catch (err) {
+      console.error(err);
+      setChatHistory(prev => [...prev, { role: 'assistant', content: 'Failed to connect to the advisor.' }]);
+    } finally {
+      setChatting(false);
     }
   };
 
@@ -108,6 +135,48 @@ export default function Simulator() {
             </div>
             </Card>
         )}
+
+        <div className="mt-10 border-t border-white/10 pt-8 space-y-4 pb-10">
+          <h2 className="text-lg font-medium text-white/90">"What If?" Scenarios</h2>
+          <p className="text-sm text-secondaryText mb-2">Ask the AI Copilot how specific purchases will impact your metrics.</p>
+
+          <Card className="bg-card/40 border-white/5 h-72 overflow-y-auto space-y-3 p-4 flex flex-col mb-2">
+            {chatHistory.length === 0 && (
+              <p className="text-xs text-secondaryText text-center m-auto">Start a simulation conversation here.</p>
+            )}
+            {chatHistory.map((msg, i) => (
+               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                 <div className={`max-w-[85%] p-3 rounded-2xl text-sm leading-relaxed ${msg.role === 'user' ? 'bg-white text-black rounded-br-sm' : 'bg-white/10 text-white/90 rounded-bl-sm border border-white/5'}`}>
+                   {msg.content}
+                 </div>
+               </div>
+            ))}
+            {chatting && (
+               <div className="flex justify-start">
+                 <div className="max-w-[85%] p-3 rounded-2xl text-sm bg-white/10 text-white/50 rounded-bl-sm border border-white/5 animate-pulse">
+                   Thinking...
+                 </div>
+               </div>
+            )}
+          </Card>
+
+          <div className="flex gap-2">
+            <input 
+               className="flex-1 bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-3 outline-none focus:border-white/30 transition-colors"
+               placeholder="What if I buy a car worth 5 Lakhs now?"
+               value={chatMessage}
+               onChange={(e) => setChatMessage(e.target.value)}
+               onKeyDown={(e) => e.key === 'Enter' && runChat()}
+            />
+            <button 
+               onClick={runChat}
+               disabled={chatting || !chatMessage.trim()}
+               className="bg-white text-black px-5 rounded-xl font-medium text-sm active:scale-95 transition-transform disabled:opacity-50"
+            >
+              Ask
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

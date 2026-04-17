@@ -28,10 +28,7 @@ export default function Analysis() {
             <span className="text-secondaryText">Total debits (Outflow)</span>
             <span className="text-danger font-medium">₹{summary.totalDebits.toLocaleString()}</span>
           </div>
-          <div className="flex justify-between border-b border-white/5 pb-2">
-            <span className="text-secondaryText">Net retained</span>
-            <span className="text-white font-medium">₹{summary.retainedBalance.toLocaleString()}</span>
-          </div>
+
           <div className="flex justify-between pt-1 pb-2 border-b border-white/5">
             <span className="text-secondaryText">Transactions</span>
             <span className="text-white">{summary.txCount}</span>
@@ -39,7 +36,7 @@ export default function Analysis() {
           <div className="flex justify-between pt-1">
             <span className="text-secondaryText text-xs">Burn Rate Formula</span>
             <span className="text-white/60 text-xs text-right">
-               ∑ Debits (₹{summary.totalDebits.toLocaleString()}) <br/> / {Math.max(1, Math.round(summary.totalDebits / (summary.averageDailySpend || 1)))} Days
+               ∑ Debits (₹{summary.totalDebits.toLocaleString()}) <br/> / {summary.actualDaysSpanned || Math.max(1, Math.round(summary.totalDebits / (summary.averageDailySpend || 1)))} Days
             </span>
           </div>
         </Card>
@@ -50,9 +47,13 @@ export default function Analysis() {
           <h2 className="text-lg font-medium text-white/90">Identified Micro Leaks</h2>
           <Card className="divide-y divide-white/5 space-y-2 max-h-64 overflow-y-auto">
             {report.microLeakTransactions.map((tx: any, idx: number) => (
-              <div key={idx} className="flex justify-between items-center pt-2">
-                 <span className="text-sm text-secondaryText truncate max-w-[200px]">{tx.description || "Vendor"}</span>
+              <div key={idx} className="group relative flex justify-between items-center pt-2 pb-2 cursor-pointer">
+                 <span className="text-sm text-secondaryText truncate max-w-[200px] transition-colors group-hover:text-white">{tx.description || "Vendor"}</span>
                  <span className="text-sm text-danger font-medium">-₹{tx.amount}</span>
+                 
+                 <div className="absolute top-8 left-0 hidden group-hover:flex bg-card border border-white/10 text-secondaryText text-[11px] p-2 rounded z-10 w-[95%] shadow-lg">
+                    {tx.hoverMessage || "Was this spend entirely necessary?"}
+                 </div>
               </div>
             ))}
           </Card>

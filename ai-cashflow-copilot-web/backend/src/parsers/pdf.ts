@@ -17,11 +17,23 @@ export const parsePDF = async (filePath: string): Promise<any[]> => {
     console.log(`[PDF Parser] Passing ${text.length} characters of raw text to AI for detailed extraction...`);
     const results = await extractTransactionsFromText(text);
     
-    // Format the date objects back to JS Dates
-    const formattedResults = results.map(tx => ({
-      ...tx,
-      date: new Date(tx.date)
-    }));
+    const formattedResults = results.map(tx => {
+       let parsed = new Date(tx.date);
+       // If the LLM hallucinated YYYY-DD-MM instead of YYYY-MM-DD
+       if (isNaN(parsed.getTime())) {
+          const parts = tx.date.split('-');
+          if (parts.length === 3) {
+            // Swap day and month securely
+            parsed = new Date(`${parts[0]}-${parts[2]}-${parts[1]}`);
+          }
+       }
+       if (isNaN(parsed.getTime())) parsed = new Date(); // Ultra safe fallback
+       
+       return {
+         ...tx,
+         date: parsed
+       };
+    });
 
     console.log(`[PDF Parser] AI successfully extracted ${formattedResults.length} transactions from the custom PDF.`);
     return formattedResults;

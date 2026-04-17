@@ -33,6 +33,8 @@ router.get('/dashboard/latest', auth, getLatestReport);
 router.get('/report/:id', auth, getReportById);
 router.get('/history', auth, getHistory);
 router.post('/simulate', auth, simulate);
+router.get('/simulate/chat', auth, require('../controllers/dashboard').getChatHistory);
+router.post('/simulate/chat', auth, require('../controllers/dashboard').simulateChat);
 router.delete('/user/data', auth, deleteUserData);
 
 export default router;

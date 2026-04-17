@@ -3,7 +3,8 @@ import { Report } from '../models/Report';
 import { Upload } from '../models/Upload';
 import { Transaction } from '../models/Transaction';
 import { User } from '../models/User';
-import { generateSimulatorAdvice } from '../ai/groq';
+import { Chat } from '../models/Chat';
+import { generateSimulatorAdvice, chatWithSimulator } from '../ai/groq';
 
 export const getLatestReport = async (req: Request, res: Response) => {
   try {
@@ -45,8 +46,8 @@ export const simulate = async (req: Request, res: Response) => {
     const newRunway = Math.floor(balanceEstimate / newBurnRate);
     const newRunwayDate = new Date(Date.now() + newRunway * 86400000);
     
-    const newScore = Math.min(100, report.survivalScore + Math.floor(reduceDailySpend / 20));
-    const newGuiltScore = Math.max(0, report.guiltScore - Math.floor(reduceDailySpend / 10));
+    const newScore = Math.min(100, report.survivalScore + Math.floor(reduceDailySpend / 20) + Math.floor(extraIncome / 500));
+    const newGuiltScore = Math.max(0, report.guiltScore - Math.floor(reduceDailySpend / 10) - Math.floor(extraIncome / 200));
 
     const aiAdvice = await generateSimulatorAdvice({
       reduceDailySpend,
@@ -65,6 +66,40 @@ export const simulate = async (req: Request, res: Response) => {
       aiAdvice
     });
 
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getChatHistory = async (req: Request, res: Response) => {
+  try {
+    const chats = await Chat.find({ userId: (req as any).userId }).sort({ createdAt: 1 });
+    res.json({ chats });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const simulateChat = async (req: Request, res: Response) => {
+  try {
+    const { message } = req.body;
+    const userId = (req as any).userId;
+    const report = await Report.findOne({ userId }).sort({ createdAt: -1 });
+    if (!report) return res.status(400).json({ error: 'No report available for simulation chat' });
+
+    // Save user message
+    await Chat.create({ userId, role: 'user', content: message });
+
+    // Fetch previous context
+    const previousChats = await Chat.find({ userId }).sort({ createdAt: 1 }).limit(10);
+    
+    // Connect to AI
+    const reply = await chatWithSimulator(report, message, previousChats);
+    
+    // Save assistant reply
+    await Chat.create({ userId, role: 'assistant', content: reply });
+
+    res.json({ reply });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
