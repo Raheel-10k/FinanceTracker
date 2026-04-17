@@ -36,7 +36,10 @@ export const parseCSV = (filePath: string): Promise<any[]> => {
             }
         }
       })
-      .on('end', () => resolve(results))
+      .on('end', () => {
+        console.log(`[CSV Parser] Processed actual file path ${filePath}. Found ${results.length} transactions.`);
+        resolve(results);
+      })
       .on('error', reject);
   });
 };

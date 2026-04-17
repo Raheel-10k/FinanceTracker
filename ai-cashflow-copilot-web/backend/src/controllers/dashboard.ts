@@ -3,7 +3,7 @@ import { Report } from '../models/Report';
 import { Upload } from '../models/Upload';
 import { Transaction } from '../models/Transaction';
 import { User } from '../models/User';
-import { generateSimulatorAdvice } from '../ai/gemini';
+import { generateSimulatorAdvice } from '../ai/groq';
 
 export const getLatestReport = async (req: Request, res: Response) => {
   try {

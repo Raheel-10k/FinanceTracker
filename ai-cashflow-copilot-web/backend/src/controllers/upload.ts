@@ -4,7 +4,7 @@ import { Transaction } from '../models/Transaction';
 import { Report } from '../models/Report';
 import { parseCSV } from '../parsers/csv';
 import { parsePDF } from '../parsers/pdf';
-import { generateAIInsights } from '../ai/gemini';
+import { generateAIInsights } from '../ai/groq';
 import path from 'path';
 
 export const uploadStatement = async (req: Request, res: Response) => {
@@ -42,10 +42,12 @@ export const uploadStatement = async (req: Request, res: Response) => {
     }
 
     if (txsData.length === 0) {
+      console.warn(`[UploadController] No transactions parsed from file ${file.path}`);
       upload.status = 'failed';
       await upload.save();
-      return res.status(400).json({ error: 'Could not parse transactions from file' });
+      return res.status(400).json({ error: 'Could not parse any transactions from the uploaded file' });
     }
+    console.log(`[UploadController] Parsed ${txsData.length} total transactions successfully.`);
 
     // Save transactions
     const txRecords = txsData.map(tx => ({
@@ -94,7 +96,7 @@ export const uploadStatement = async (req: Request, res: Response) => {
       runwayDate: new Date(Date.now() + runway * 86400000),
       burnRate: Math.round(burnRate),
       microLeakAmount,
-      recurringCount: 0, // Simplified for this prototype
+      recurringCount: 0,
       confidence: "High",
       statementSummary: {
         totalCredits,
@@ -113,6 +115,7 @@ export const uploadStatement = async (req: Request, res: Response) => {
     upload.status = 'parsed';
     await upload.save();
 
+    console.log(`[UploadController] Report ${report._id} generated and saved correctly.`);
     res.json({ success: true, reportId: report._id, message: 'Statement analyzed' });
 
   } catch (error: any) {
