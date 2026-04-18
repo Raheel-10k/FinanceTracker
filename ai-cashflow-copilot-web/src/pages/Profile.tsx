@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import Card from '../components/Card';
 import api from '../services/api';
-import { User, LogOut, Shield, Bell, ChevronRight, HelpCircle } from 'lucide-react';
+import { User, LogOut, Shield, ChevronRight, HelpCircle } from 'lucide-react';
 
 export default function Profile() {
   const navigate = useNavigate();

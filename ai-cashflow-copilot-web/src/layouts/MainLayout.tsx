@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { Home, PieChart, Sliders, Clock, User } from 'lucide-react';
+import { Home, Sliders, Clock, User } from 'lucide-react';
 import { cn } from '../utils/cn';
 
 export default function MainLayout() {

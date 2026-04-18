@@ -1,28 +1,6 @@
-import { useNavigate } from 'react-router-dom';
 import Card from '../components/Card';
-import api from '../services/api';
-import { useAppStore } from '../store/useAppStore';
 
 export default function Settings() {
-  const navigate = useNavigate();
-  const setToken = useAppStore(state => state.setToken);
-
-  const handleLogout = () => {
-    setToken(null);
-    navigate('/');
-  };
-
-  const handleDeleteData = async () => {
-    if(confirm("Are you sure you want to delete all uploaded statements and history?")) {
-        try {
-            await api.delete('/user/data');
-            alert('Data deleted successfully');
-            window.location.reload();
-        } catch(e) {
-            alert('Failed to delete data');
-        }
-    }
-  };
 
   return (
     <div className="p-6 pt-12 space-y-6">
