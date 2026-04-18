@@ -27,7 +27,7 @@ export default function Analysis() {
     return words;
   };
 
-  const handleCategorize = async (fullDescription: string, category: string, amountValue: number, dateValue: Date, sourceCategoryId: string) => {
+  const handleCategorize = async (fullDescription: string, category: string, sourceCategoryId: string) => {
     const keywords = getSignificantKeywords(fullDescription);
     const patternForBackend = keywords.join(' '); // We'll save the keywords as a space-separated rule
     
@@ -220,7 +220,7 @@ export default function Analysis() {
                                       cat.id !== btn.id && (
                                         <button 
                                           key={btn.id}
-                                          onClick={() => handleCategorize(tx.description, btn.id, tx.amount, tx.date, cat.id)}
+                                          onClick={() => handleCategorize(tx.description, btn.id, cat.id)}
                                           className={`px-2 py-0.5 rounded-full border border-white/10 text-[9px] font-medium hover:border-white/40 ${btn.color} transition-all active:scale-90`}
                                         >
                                           {btn.label}
