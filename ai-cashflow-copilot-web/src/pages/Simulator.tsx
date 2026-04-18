@@ -116,9 +116,10 @@ export default function Simulator() {
         <button 
             onClick={simulate}
             disabled={loading}
-            className="w-full h-14 bg-white/10 text-white rounded-2xl mt-4 active:scale-95 transition-transform disabled:opacity-50"
+            className="group relative w-full h-14 bg-white/10 text-white rounded-2xl mt-4 active:scale-95 transition-all overflow-hidden disabled:opacity-50"
           >
-            {loading ? 'Simulating...' : 'Run Simulation'}
+            <div className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-25 animate-comet pointer-events-none" />
+            <span className="relative z-10">{loading ? 'Simulating...' : 'Run Simulation'}</span>
         </button>
 
         {result && (
@@ -199,21 +200,24 @@ export default function Simulator() {
              ))}
           </div>
 
-          <div className="flex gap-2 sticky bottom-4 z-10 bg-black/40 backdrop-blur-sm p-1 rounded-2xl border border-white/5">
-            <input 
-               className="flex-1 bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-4 outline-none focus:border-white/30 transition-colors"
-               placeholder="What if I spend 2k on drinks tonight?"
-               value={chatMessage}
-               onChange={(e) => setChatMessage(e.target.value)}
-               onKeyDown={(e) => e.key === 'Enter' && runChat()}
-            />
-            <button 
-               onClick={() => runChat()}
-               disabled={chatting || !chatMessage.trim()}
-               className="bg-white text-black px-6 rounded-xl font-semibold text-sm active:scale-95 transition-transform disabled:opacity-50"
-            >
-              Ask
-            </button>
+          <div className="sticky bottom-8 left-0 right-0 z-10 flex justify-center px-4">
+            <div className="group w-full max-w-sm flex items-center gap-2 bg-white/[0.03] backdrop-blur-xl border border-white/5 rounded-2xl p-1.5 pl-4 focus-within:border-white/20 focus-within:bg-white/[0.05] transition-all duration-500 shadow-2xl overflow-hidden relative">
+              <div className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-25 animate-comet pointer-events-none opacity-50 transition-opacity group-focus-within:opacity-100" />
+              <input 
+                 className="flex-1 bg-transparent text-white text-[13px] py-2 outline-none placeholder:text-white/20 font-light relative z-10"
+                 placeholder="Ask your copilot anything..."
+                 value={chatMessage}
+                 onChange={(e) => setChatMessage(e.target.value)}
+                 onKeyDown={(e) => e.key === 'Enter' && runChat()}
+              />
+              <button 
+                 onClick={() => runChat()}
+                 disabled={chatting || !chatMessage.trim()}
+                 className="h-9 px-4 rounded-[14px] bg-white text-black text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all duration-300 disabled:opacity-0 disabled:translate-x-2 overflow-hidden relative z-10"
+              >
+                {chatting ? 'Wait' : 'Ask'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

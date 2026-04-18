@@ -13,6 +13,19 @@ export default function Home() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [uploadStatus, setUploadStatus] = useState('');
+  const [greeting, setGreeting] = useState('');
+
+  useEffect(() => {
+    const updateGreeting = () => {
+      const hour = new Date().getHours();
+      if (hour < 12) setGreeting('Good Morning');
+      else if (hour < 17) setGreeting('Good Afternoon');
+      else setGreeting('Good Evening');
+    };
+    updateGreeting();
+    const interval = setInterval(updateGreeting, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!token) return navigate('/login');
@@ -117,7 +130,7 @@ export default function Home() {
     <div className="p-6 pt-12 space-y-6">
       <header>
         <div className="flex justify-between items-center">
-             <h1 className="text-2xl font-semibold">Good Evening</h1>
+             <h1 className="text-2xl font-semibold">{greeting}</h1>
              <label className="text-xs px-3 py-1 bg-white/10 rounded-full cursor-pointer hover:bg-white/20 transition-colors flex items-center gap-2">
                 {uploading ? <div className="w-2 h-2 bg-white rounded-full animate-ping"></div> : 'New'}
                 <input type="file" className="hidden" accept=".pdf,.csv" onChange={handleFileUpload} disabled={uploading}/>
@@ -168,9 +181,10 @@ export default function Home() {
 
       <button 
         onClick={() => navigate('/app/analysis')}
-        className="w-full h-14 rounded-2xl bg-white/5 text-white border border-white/10 font-medium active:scale-95 transition-transform mt-4"
+        className="group relative w-full h-14 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 text-emerald-400 border border-emerald-500/20 font-semibold active:scale-95 transition-all duration-300 mt-4 shadow-[0_0_20px_rgba(16,185,129,0.05)] hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] hover:border-emerald-500/40 hover:from-emerald-500/15 overflow-hidden"
       >
-        View Full Analysis
+        <div className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-25 animate-comet pointer-events-none" />
+        <span className="relative z-10">View Full Analysis</span>
       </button>
 
       {/* Uploading Overlay */}

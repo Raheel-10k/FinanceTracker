@@ -60,11 +60,6 @@ export default function Profile() {
             <span className="text-sm font-medium text-white">Dark Mode</span>
             <span className="text-secondaryText text-xs font-medium">Automatic</span>
           </button>
-          
-          <button className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors group">
-            <span className="text-sm font-medium text-white">Biometric Unlock</span>
-            <span className="text-[9px] bg-white/5 px-2 py-0.5 rounded-full uppercase tracking-widest text-secondaryText">Coming Soon</span>
-          </button>
         </Card>
       </section>
 

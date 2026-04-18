@@ -16,3 +16,12 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
+
+@keyframes comet {
+  0% { transform: translateX(-150%) skewX(-25deg); }
+  100% { transform: translateX(350%) skewX(-25deg); }
+}
+
+.animate-comet {
+  animation: comet 4s infinite ease-in-out;
+}
