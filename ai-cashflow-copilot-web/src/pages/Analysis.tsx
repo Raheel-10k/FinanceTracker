@@ -1,7 +1,6 @@
 import { useAppStore } from '../store/useAppStore';
 import { Navigate } from 'react-router-dom';
 import Card from '../components/Card';
-import StatTile from '../components/StatTile';
 
 export default function Analysis() {
   const { report } = useAppStore();
