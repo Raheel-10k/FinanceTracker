@@ -127,7 +127,7 @@ export default function Simulator() {
             
             <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                <span className="text-secondaryText text-sm">New Runway</span>
+                <span className="text-secondaryText text-sm">Runway</span>
                 <span className="text-xl font-semibold text-white">{result.newRunway} days</span>
                 </div>
                 

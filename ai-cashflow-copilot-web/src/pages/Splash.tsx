@@ -48,14 +48,11 @@ export default function Splash() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1, duration: 1 }}
-          className="w-full mt-4"
+          className="w-full mt-4 flex justify-center pb-12"
         >
-          <button 
-            onClick={() => navigate('/app')}
-            className="w-full h-14 rounded-full bg-transparent text-white/70 font-medium tracking-wide border border-white/10 hover:bg-white/5 transition-colors active:scale-95"
-          >
-            Try Demo
-          </button>
+          <p className="text-[10px] text-white/30 tracking-[0.2em] font-light uppercase">
+            End-to-End Secure
+          </p>
         </motion.div>
 
       </div>
