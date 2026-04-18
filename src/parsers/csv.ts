@@ -6,7 +6,7 @@ export const parseCSV = (filePath: string): Promise<any[]> => {
     const results: any[] = [];
     fs.createReadStream(filePath)
       .pipe(csv())
-      .on('data', (data) => {
+      .on('data', (data: any) => {
         // Attempt to parse standard bank csv format heuristically
         // E.g. date, description, debit, credit, balance
         const keys = Object.keys(data);

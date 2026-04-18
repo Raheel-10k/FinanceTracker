@@ -10,7 +10,7 @@ export const parsePDF = async (filePath: string): Promise<any[]> => {
     
     // Perform gentle cleaning instead of aggressive digit-strips to preserve formatting
     const lines = data.text.split('\n');
-    const cleanedLines = lines.filter(line => line.trim().length > 2);
+    const cleanedLines = lines.filter((line: string) => line.trim().length > 2);
     
     const text = cleanedLines.join('\n');
     
