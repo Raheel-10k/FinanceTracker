@@ -132,6 +132,41 @@ export const uploadStatement = async (req: Request, res: Response) => {
     const microLeakAmount = microLeaksTxs.reduce((s, t) => s + t.amount, 0);
     const largestSpend = Math.max(...allTxs.filter(t => t.type === 'debit').map(t => t.amount), 0);
 
+    const shoppingVendors = ['AMAZON', 'FLIPKART', 'EKART'];
+    const foodVendors = ['SWIGGY', 'ZOMATO'];
+    const quickCommVendors = ['ZEPTO', 'BLINKIT'];
+
+    let shoppingTotal = 0;
+    let foodTotal = 0;
+    let quickCommTotal = 0;
+    
+    const shoppingTxs: any[] = [];
+    const foodTxs: any[] = [];
+    const quickCommTxs: any[] = [];
+
+    allTxs.forEach(t => {
+      if (t.type === 'debit') {
+        const desc = (t.description || '').toUpperCase();
+        if (shoppingVendors.some(v => desc.includes(v))) {
+          shoppingTotal += t.amount;
+          shoppingTxs.push({ date: t.date, description: t.description, amount: t.amount });
+        } else if (foodVendors.some(v => desc.includes(v))) {
+          foodTotal += t.amount;
+          foodTxs.push({ date: t.date, description: t.description, amount: t.amount });
+        } else if (quickCommVendors.some(v => desc.includes(v))) {
+          quickCommTotal += t.amount;
+          quickCommTxs.push({ date: t.date, description: t.description, amount: t.amount });
+        }
+      }
+    });
+
+    const categoryTotals = {
+      shopping: { total: Math.round(shoppingTotal), transactions: shoppingTxs },
+      food: { total: Math.round(foodTotal), transactions: foodTxs },
+      quickComm: { total: Math.round(quickCommTotal), transactions: quickCommTxs },
+      other: Math.round(totalDebits - (shoppingTotal + foodTotal + quickCommTotal))
+    };
+
     // Heuristics Score calculation
     let survivalScore = Math.min(100, Math.max(0, Math.floor((runway / 30) * 100)));
     let guiltScore = Math.min(100, Math.floor((microLeakAmount / Math.max(1, totalDebits)) * 100) + (burnRate > 1000 ? 50 : 0));
@@ -139,7 +174,7 @@ export const uploadStatement = async (req: Request, res: Response) => {
     if (runway <= 0) guiltScore = Math.max(guiltScore, 95);
     else if (runway <= 5) guiltScore = Math.max(guiltScore, 85);
     else if (runway <= 15) guiltScore = Math.max(guiltScore, 65);
-    
+
     const aiResp = await generateAIInsights({
       burnRate: Math.round(burnRate),
       runway,
@@ -174,7 +209,8 @@ export const uploadStatement = async (req: Request, res: Response) => {
       aiNarrative: aiResp.aiNarrative,
       simulatorAdvice: aiResp.recommendation,
       insights: aiResp.insights,
-      microLeakTransactions: microLeaksTxs
+      microLeakTransactions: microLeaksTxs,
+      categoryTotals // <-- Added here
     });
     await report.save();
 

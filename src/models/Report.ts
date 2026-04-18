@@ -28,7 +28,22 @@ const reportSchema = new mongoose.Schema({
     description: String,
     amount: Number,
     hoverMessage: String
-  }]
+  }],
+  categoryTotals: {
+    shopping: { 
+      total: { type: Number, default: 0 },
+      transactions: [{ date: Date, description: String, amount: Number }]
+    },
+    food: { 
+      total: { type: Number, default: 0 },
+      transactions: [{ date: Date, description: String, amount: Number }]
+    },
+    quickComm: { 
+      total: { type: Number, default: 0 },
+      transactions: [{ date: Date, description: String, amount: Number }]
+    },
+    other: { type: Number, default: 0 }
+  }
 }, { timestamps: true });
 
 export const Report = mongoose.model('Report', reportSchema);
