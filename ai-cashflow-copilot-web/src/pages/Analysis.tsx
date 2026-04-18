@@ -1,9 +1,12 @@
 import { useAppStore } from '../store/useAppStore';
 import { Navigate } from 'react-router-dom';
 import Card from '../components/Card';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Analysis() {
   const { report } = useAppStore();
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
   if (!report) return <Navigate to="/app" />;
 
@@ -65,6 +68,84 @@ export default function Analysis() {
           </div>
         </Card>
       </section>
+
+      {report.categoryTotals && (
+        <section className="space-y-4">
+          <h2 className="text-lg font-medium text-white/90">Spending Categories</h2>
+          <Card className="p-0 overflow-hidden divide-y divide-white/5">
+            {[
+              { id: 'shopping', label: 'Shopping', data: report.categoryTotals.shopping, color: 'bg-blue-500' },
+              { id: 'food', label: 'Food Delivery', data: report.categoryTotals.food, color: 'bg-orange-500' },
+              { id: 'quickComm', label: 'Quick-Comm', data: report.categoryTotals.quickComm, color: 'bg-emerald-500' },
+              { id: 'other', label: 'Other / Vague', data: { total: report.categoryTotals.other }, color: 'bg-white/20' }
+            ].map((cat) => {
+              const amount = typeof cat.data === 'object' ? (cat.data.total || 0) : (cat.data || 0);
+              return (
+              <div key={cat.id} className="group">
+                <button 
+                  onClick={() => cat.id !== 'other' && setExpandedCategory(expandedCategory === cat.id ? null : cat.id)}
+                  className={`w-full p-5 text-left transition-colors ${cat.id !== 'other' ? 'active:bg-white/[0.03]' : 'cursor-default'}`}
+                >
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-[11px] uppercase tracking-[0.2em] text-secondaryText font-bold">{cat.label}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-white">₹{amount.toLocaleString()}</span>
+                      {cat.id !== 'other' && (
+                        <div className={`transition-transform duration-300 ${expandedCategory === cat.id ? 'rotate-180' : ''}`}>
+                          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M1 1L5 5L9 1" stroke="#8A8A8A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(100, (amount / report.statementSummary.totalDebits) * 100)}%` }}
+                      transition={{ duration: 1, ease: "easeOut" }}
+                      className={`h-full ${cat.color}`}
+                    />
+                  </div>
+                </button>
+
+                <AnimatePresence>
+                  {expandedCategory === cat.id && cat.data.transactions && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden bg-white/[0.02]"
+                    >
+                      <div className="px-5 pb-5 pt-2">
+                        <div className="max-h-40 overflow-y-auto pr-2 space-y-3 scrollbar-hide">
+                          {cat.data.transactions.length > 0 ? (
+                            cat.data.transactions.map((tx: any, i: number) => (
+                              <div key={i} className="flex justify-between items-center group/tx">
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-[11px] text-white/80 truncate pr-4">{tx.description}</p>
+                                  <p className="text-[9px] text-white/30 uppercase tracking-tighter">{new Date(tx.date).toLocaleDateString()}</p>
+                                </div>
+                                <span className="text-[11px] font-medium text-white/90">₹{tx.amount.toLocaleString()}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-[10px] text-white/20 italic">No transactions found in this period.</p>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );})}
+          </Card>
+          
+          <p className="text-[10px] text-white/20 italic text-center px-4 leading-relaxed">
+            * Tap a category to view specific transactions. "Other" includes bills, transfers, and bank charges.
+          </p>
+        </section>
+      )}
 
       {report.microLeakTransactions && report.microLeakTransactions.length > 0 && (
         <section className="space-y-4">
