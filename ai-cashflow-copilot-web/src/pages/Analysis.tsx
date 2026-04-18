@@ -3,10 +3,49 @@ import { Navigate } from 'react-router-dom';
 import Card from '../components/Card';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import api from '../services/api';
 
 export default function Analysis() {
-  const { report } = useAppStore();
+  const { report, setReport } = useAppStore();
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+
+  const handleCategorize = async (description: string, category: string, amountValue: number, dateValue: Date, sourceCategoryId: string) => {
+    try {
+      await api.post('/user/rules', { descriptionPattern: description, category });
+      
+      // Local UI Optimistic Update (Bulk Move)
+      if (report) {
+        const updatedReport = JSON.parse(JSON.stringify(report));
+        const sourceCat = updatedReport.categoryTotals[sourceCategoryId];
+        const targetCat = updatedReport.categoryTotals[category];
+
+        // Find all matching transactions in the current source category
+        const matchingTxs = sourceCat.transactions.filter((t: any) => 
+          t.description.toUpperCase().includes(description.toUpperCase())
+        );
+
+        if (matchingTxs.length > 0) {
+          // 1. Remove all matching from source
+          sourceCat.transactions = sourceCat.transactions.filter((t: any) => 
+            !t.description.toUpperCase().includes(description.toUpperCase())
+          );
+          
+          const totalAmountMoved = matchingTxs.reduce((sum: number, t: any) => sum + t.amount, 0);
+          sourceCat.total -= totalAmountMoved;
+
+          // 2. Add all to target
+          targetCat.transactions.push(...matchingTxs);
+          targetCat.total += totalAmountMoved;
+
+          setReport(updatedReport);
+          alert(`Success! Moved ${matchingTxs.length} transactions matching "${description}" to ${category}. This rule will also be applied to all future statement uploads.`);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to save rule. Please try again.');
+    }
+  };
 
   if (!report) return <Navigate to="/app" />;
 
@@ -77,26 +116,24 @@ export default function Analysis() {
               { id: 'shopping', label: 'Shopping', data: report.categoryTotals.shopping, color: 'bg-blue-500' },
               { id: 'food', label: 'Food Delivery', data: report.categoryTotals.food, color: 'bg-orange-500' },
               { id: 'quickComm', label: 'Quick-Comm', data: report.categoryTotals.quickComm, color: 'bg-emerald-500' },
-              { id: 'other', label: 'Other / Vague', data: { total: report.categoryTotals.other }, color: 'bg-white/20' }
+              { id: 'other', label: 'Other / Vague', data: report.categoryTotals.other, color: 'bg-white/20' }
             ].map((cat) => {
               const amount = typeof cat.data === 'object' ? (cat.data.total || 0) : (cat.data || 0);
               return (
               <div key={cat.id} className="group">
                 <button 
-                  onClick={() => cat.id !== 'other' && setExpandedCategory(expandedCategory === cat.id ? null : cat.id)}
-                  className={`w-full p-5 text-left transition-colors ${cat.id !== 'other' ? 'active:bg-white/[0.03]' : 'cursor-default'}`}
+                  onClick={() => setExpandedCategory(expandedCategory === cat.id ? null : cat.id)}
+                  className="w-full p-5 text-left transition-colors active:bg-white/[0.03] cursor-pointer"
                 >
                   <div className="flex justify-between items-center mb-3">
                     <span className="text-[11px] uppercase tracking-[0.2em] text-secondaryText font-bold">{cat.label}</span>
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-semibold text-white">₹{amount.toLocaleString()}</span>
-                      {cat.id !== 'other' && (
-                        <div className={`transition-transform duration-300 ${expandedCategory === cat.id ? 'rotate-180' : ''}`}>
-                          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M1 1L5 5L9 1" stroke="#8A8A8A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </div>
-                      )}
+                      <div className={`transition-transform duration-300 ${expandedCategory === cat.id ? 'rotate-180' : ''}`}>
+                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M1 1L5 5L9 1" stroke="#8A8A8A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
                     </div>
                   </div>
                   <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
@@ -118,15 +155,37 @@ export default function Analysis() {
                       className="overflow-hidden bg-white/[0.02]"
                     >
                       <div className="px-5 pb-5 pt-2">
-                        <div className="max-h-40 overflow-y-auto pr-2 space-y-3 scrollbar-hide">
+                        <div className="max-h-60 overflow-y-auto pr-2 space-y-4 scrollbar-hide">
                           {cat.data.transactions.length > 0 ? (
                             cat.data.transactions.map((tx: any, i: number) => (
-                              <div key={i} className="flex justify-between items-center group/tx">
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-[11px] text-white/80 truncate pr-4">{tx.description}</p>
-                                  <p className="text-[9px] text-white/30 uppercase tracking-tighter">{new Date(tx.date).toLocaleDateString()}</p>
+                              <div key={i} className="flex flex-col gap-2 p-2 rounded-lg hover:bg-white/[0.03] transition-colors relative group/tx">
+                                <div className="flex justify-between items-start">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-[11px] text-white/80 leading-tight pr-4">{tx.description}</p>
+                                    <p className="text-[9px] text-white/30 uppercase tracking-tighter mt-1">{new Date(tx.date).toLocaleDateString()}</p>
+                                  </div>
+                                  <span className="text-[11px] font-medium text-white/90">₹{tx.amount.toLocaleString()}</span>
                                 </div>
-                                <span className="text-[11px] font-medium text-white/90">₹{tx.amount.toLocaleString()}</span>
+                                
+                                {/* Quick Categorize Action */}
+                                <div className="flex gap-2 mt-1 invisible group-hover/tx:visible transition-all">
+                                   <span className="text-[9px] text-white/20 uppercase self-center mr-1">Move to:</span>
+                                   {[
+                                      { id: 'shopping', label: 'Shop', color: 'text-blue-400' },
+                                      { id: 'food', label: 'Food', color: 'text-orange-400' },
+                                      { id: 'quickComm', label: 'Quick', color: 'text-emerald-400' }
+                                   ].map(btn => (
+                                      cat.id !== btn.id && (
+                                        <button 
+                                          key={btn.id}
+                                          onClick={() => handleCategorize(tx.description, btn.id, tx.amount, tx.date, cat.id)}
+                                          className={`px-2 py-0.5 rounded-full border border-white/10 text-[9px] font-medium hover:border-white/40 ${btn.color} transition-all active:scale-90`}
+                                        >
+                                          {btn.label}
+                                        </button>
+                                      )
+                                   ))}
+                                </div>
                               </div>
                             ))
                           ) : (
