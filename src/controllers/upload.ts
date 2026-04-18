@@ -47,60 +47,70 @@ export const uploadStatement = async (req: Request, res: Response) => {
       await upload.save();
       return res.status(400).json({ error: 'Could not parse any transactions from the uploaded file' });
     }
-    console.log(`[UploadController] Parsed ${txsData.length} total transactions successfully.`);
 
-    // Save transactions
-    const txRecords = txsData.map(tx => ({
-      userId,
-      uploadId: upload._id,
-      ...tx
-    }));
-    await Transaction.insertMany(txRecords);
-
-    // Deterministic Analysis
-    const totalCredits = txsData.filter(t => t.type === 'credit').reduce((sum, t) => sum + t.amount, 0);
-    const totalDebits = txsData.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount, 0);
+    // --- CONTINUATION & DEDUPLICATION LOGIC ---
+    // Fetch all existing transactions for this user
+    const existingTxs = await Transaction.find({ userId });
     
-    const sortedTxs = [...txsData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // Deduplication: Avoid transactions with same date, description, and amount
+    const newTxsData = txsData.filter(tx => {
+      const txDate = new Date(tx.date).getTime();
+      const isDup = existingTxs.some(et => 
+        new Date(et.date).getTime() === txDate &&
+        et.description.trim() === tx.description.trim() &&
+        et.amount === tx.amount
+      );
+      return !isDup;
+    });
+
+    console.log(`[UploadController] Parsed ${txsData.length} total. New unique transactions: ${newTxsData.length}`);
+
+    // Store only new transactions
+    if (newTxsData.length > 0) {
+      const txRecords = newTxsData.map(tx => ({
+        userId,
+        uploadId: upload._id,
+        ...tx
+      }));
+      await Transaction.insertMany(txRecords);
+    }
+
+    // For analysis, use ALL transactions (historical + new)
+    const updatedExistingTxs = await Transaction.find({ userId }).lean();
+    const allTxs = updatedExistingTxs;
+
+    if (allTxs.length === 0) {
+        return res.status(400).json({ error: 'No transactions found for analysis' });
+    }
+
+    // Deterministic Analysis over ALL history
+    const totalCredits = allTxs.filter(t => t.type === 'credit').reduce((sum, t) => sum + t.amount, 0);
+    const totalDebits = allTxs.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount, 0);
+    
+    const sortedTxs = [...allTxs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     let firstDateMs = new Date(sortedTxs[0].date).getTime();
     let lastDateMs = new Date(sortedTxs[sortedTxs.length - 1].date).getTime();
     
-    // The AI might aggressively hallucinate 30-day bounds using memory from previous generations. 
-    // Securely pull bounds from the filename parameters if they exist!
-    let actualDaysSpanned = 0;
-    const fileDateMatch = file.originalname.match(/_(\d{2}-[a-zA-Z]{3}-\d{4})_(\d{2}-[a-zA-Z]{3}-\d{4})/);
-    if (fileDateMatch && fileDateMatch.length === 3) {
-      const explicitStart = new Date(fileDateMatch[1]).getTime();
-      const explicitEnd = new Date(fileDateMatch[2]).getTime();
-      if (!isNaN(explicitStart) && !isNaN(explicitEnd)) {
-         actualDaysSpanned = Math.ceil((explicitEnd - explicitStart) / (1000 * 60 * 60 * 24)) + 1;
-      }
-    }
+    // Calculate total days spanned across entire history
+    let actualDaysSpanned = Math.ceil((lastDateMs - firstDateMs) / (1000 * 60 * 60 * 24)) + 1;
     
-    // If filename regex fails, organically fall back to matrix matching dates
-    if (actualDaysSpanned < 1 || isNaN(actualDaysSpanned)) {
-       actualDaysSpanned = Math.ceil((lastDateMs - firstDateMs) / (1000 * 60 * 60 * 24)) + 1;
-    }
-    
-    if (actualDaysSpanned < 1 || isNaN(actualDaysSpanned)) actualDaysSpanned = 17; // Smart fallback
+    // Fallback if dates are weird
+    if (actualDaysSpanned < 1 || isNaN(actualDaysSpanned)) actualDaysSpanned = 17; 
     
     const burnRate = totalDebits / actualDaysSpanned;
     
-    // Check if the AI managed to pull a real trailing balance value natively
+    // Balance calculation: Use balance from the most recent transaction
     let currentBalance = [...sortedTxs].reverse().find(t => t.balance && t.balance > 0)?.balance || 0;
     
-    // If the bank statement didn't have readable balances, formulate a theoretical max balance from credits
     if (currentBalance === 0) {
-      currentBalance = Math.max(totalCredits, totalDebits + 5000); // Baseline buffer for demo prototype
+      currentBalance = Math.max(totalCredits, totalDebits + 5000); 
     }
 
     const runway = burnRate > 0 ? Math.floor(currentBalance / burnRate) : 999;
-    
-    // Net retained over the cycle is explicitly Inflow minus Outflow
     const retainedBalance = totalCredits - totalDebits;
     
-    const microLeaksTxs = txsData.filter(t => t.type === 'debit' && t.amount <= 200).map(t => {
-      const sameAmountCount = txsData.filter(tx => tx.amount === t.amount).length;
+    const microLeaksTxs = allTxs.filter(t => t.type === 'debit' && t.amount <= 200).map(t => {
+      const sameAmountCount = allTxs.filter(tx => tx.amount === t.amount).length;
       let hoverMsg = "Was this really a necessary transaction?";
       
       if (sameAmountCount > 3) {
@@ -118,8 +128,9 @@ export const uploadStatement = async (req: Request, res: Response) => {
         hoverMessage: hoverMsg
       };
     });
+    
     const microLeakAmount = microLeaksTxs.reduce((s, t) => s + t.amount, 0);
-    const largestSpend = Math.max(...txsData.filter(t => t.type === 'debit').map(t => t.amount), 0);
+    const largestSpend = Math.max(...allTxs.filter(t => t.type === 'debit').map(t => t.amount), 0);
 
     // Heuristics Score calculation
     let survivalScore = Math.min(100, Math.max(0, Math.floor((runway / 30) * 100)));
@@ -155,10 +166,10 @@ export const uploadStatement = async (req: Request, res: Response) => {
         totalCredits,
         totalDebits,
         retainedBalance,
-        txCount: txsData.length,
+        txCount: allTxs.length,
         largestSpend,
         averageDailySpend: Math.round(burnRate),
-        actualDaysSpanned // explicitly expose for calculations
+        actualDaysSpanned
       },
       aiNarrative: aiResp.aiNarrative,
       simulatorAdvice: aiResp.recommendation,
@@ -170,10 +181,11 @@ export const uploadStatement = async (req: Request, res: Response) => {
     upload.status = 'parsed';
     await upload.save();
 
-    console.log(`[UploadController] Report ${report._id} generated and saved correctly.`);
-    res.json({ success: true, reportId: report._id, message: 'Statement analyzed' });
+    console.log(`[UploadController] Cumulative Report ${report._id} generated and saved correctly.`);
+    res.json({ success: true, reportId: report._id, message: 'Statement integrated with existing data' });
 
   } catch (error: any) {
+    console.error(`[UploadController] Error:`, error);
     res.status(500).json({ error: error.message });
   }
 };
