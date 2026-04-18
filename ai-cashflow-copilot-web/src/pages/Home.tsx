@@ -12,6 +12,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [uploadStatus, setUploadStatus] = useState('');
 
   useEffect(() => {
     if (!token) return navigate('/login');
@@ -34,6 +35,26 @@ export default function Home() {
 
     setUploading(true);
     setError('');
+    
+    const statusMessages = [
+      'Reading statement data...',
+      'Parsing transactions...',
+      'Filtering duplicate entries...',
+      'Merging with historical data...',
+      'Generating survival insights...',
+      'Finalizing AI report...'
+    ];
+    
+    let msgIndex = 0;
+    const interval = setInterval(() => {
+       if (msgIndex < statusMessages.length - 1) {
+          msgIndex++;
+          setUploadStatus(statusMessages[msgIndex]);
+       }
+    }, 1500);
+
+    setUploadStatus(statusMessages[0]);
+
     const formData = new FormData();
     formData.append('file', file);
     formData.append('bankName', 'Default');
@@ -47,7 +68,9 @@ export default function Home() {
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to upload statement');
     } finally {
+      clearInterval(interval);
       setUploading(false);
+      setUploadStatus('');
     }
   };
 
@@ -70,6 +93,22 @@ export default function Home() {
             <input type="file" className="hidden" accept=".pdf,.csv" onChange={handleFileUpload} disabled={uploading}/>
           </label>
         </Card>
+
+        {/* Uploading Overlay */}
+        {uploading && (
+           <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[100] flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in duration-300">
+             <div className="relative mb-8">
+               <div className="w-24 h-24 border-4 border-white/5 border-t-white rounded-full animate-spin"></div>
+               <div className="absolute inset-0 flex items-center justify-center">
+                 <span className="text-3xl animate-bounce">📊</span>
+               </div>
+             </div>
+             <h2 className="text-xl font-semibold text-white mb-2">{uploadStatus}</h2>
+             <p className="text-secondaryText text-sm max-w-[220px]">
+               Our AI is analyzing your cashflow patterns to build your survival report.
+             </p>
+           </div>
+        )}
       </div>
     );
   }
@@ -79,8 +118,8 @@ export default function Home() {
       <header>
         <div className="flex justify-between items-center">
              <h1 className="text-2xl font-semibold">Good Evening</h1>
-             <label className="text-xs px-3 py-1 bg-white/10 rounded-full cursor-pointer hover:bg-white/20 transition-colors">
-                New
+             <label className="text-xs px-3 py-1 bg-white/10 rounded-full cursor-pointer hover:bg-white/20 transition-colors flex items-center gap-2">
+                {uploading ? <div className="w-2 h-2 bg-white rounded-full animate-ping"></div> : 'New'}
                 <input type="file" className="hidden" accept=".pdf,.csv" onChange={handleFileUpload} disabled={uploading}/>
              </label>
         </div>
@@ -133,6 +172,22 @@ export default function Home() {
       >
         View Full Analysis
       </button>
+
+      {/* Uploading Overlay */}
+      {uploading && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[100] flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in duration-300">
+          <div className="relative mb-8">
+            <div className="w-24 h-24 border-4 border-white/5 border-t-white rounded-full animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-3xl animate-bounce">📊</span>
+            </div>
+          </div>
+          <h2 className="text-xl font-semibold text-white mb-2">{uploadStatus}</h2>
+          <p className="text-secondaryText text-sm max-w-[220px]">
+             Our AI is analyzing your cashflow patterns to build your survival report.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

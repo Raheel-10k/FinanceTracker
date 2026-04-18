@@ -7,7 +7,9 @@ import Home from './pages/Home';
 import Analysis from './pages/Analysis';
 import Simulator from './pages/Simulator';
 import History from './pages/History';
-import Settings from './pages/Settings';
+import Profile from './pages/Profile';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsAndConditions from './pages/TermsAndConditions';
 
 function App() {
   return (
@@ -23,7 +25,9 @@ function App() {
           <Route path="analysis" element={<Analysis />} />
           <Route path="simulator" element={<Simulator />} />
           <Route path="history" element={<History />} />
-          <Route path="settings" element={<Settings />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="privacy" element={<PrivacyPolicy />} />
+          <Route path="terms" element={<TermsAndConditions />} />
         </Route>
         
         <Route path="*" element={<Navigate to="/" replace />} />

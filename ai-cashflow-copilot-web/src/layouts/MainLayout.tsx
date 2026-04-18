@@ -1,14 +1,13 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { Home, PieChart, Sliders, Clock, Settings } from 'lucide-react';
+import { Home, PieChart, Sliders, Clock, User } from 'lucide-react';
 import { cn } from '../utils/cn';
 
 export default function MainLayout() {
   const navItems = [
     { to: '/app', icon: Home, label: 'Home', end: true },
-    { to: '/app/analysis', icon: PieChart, label: 'Analysis' },
-    { to: '/app/simulator', icon: Sliders, label: 'Simulator' },
     { to: '/app/history', icon: Clock, label: 'History' },
-    { to: '/app/settings', icon: Settings, label: 'Settings' },
+    { to: '/app/simulator', icon: Sliders, label: 'Simulate' },
+    { to: '/app/profile', icon: User, label: 'Profile' }
   ];
 
   return (

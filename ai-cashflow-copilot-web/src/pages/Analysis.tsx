@@ -13,7 +13,7 @@ export default function Analysis() {
     <div className="p-6 pt-12 space-y-6">
       <header>
         <h1 className="text-2xl font-semibold mb-1">Full Analysis</h1>
-        <p className="text-sm text-secondaryText">Based on your recent statement.</p>
+        <p className="text-sm text-secondaryText">Based on your consolidated transaction history.</p>
       </header>
 
       <section className="space-y-4">
@@ -29,14 +29,30 @@ export default function Analysis() {
           </div>
 
           <div className="flex justify-between pt-1 pb-2 border-b border-white/5">
+            <span className="text-secondaryText">Retained Balance</span>
+            <span className={`font-medium ${summary.retainedBalance >= 0 ? 'text-success' : 'text-danger'}`}>
+              ₹{summary.retainedBalance.toLocaleString()}
+            </span>
+          </div>
+
+          <div className="flex justify-between pt-1 pb-2 border-b border-white/5">
+            <span className="text-secondaryText">Largest Single Spend</span>
+            <span className="text-white">₹{summary.largestSpend.toLocaleString()}</span>
+          </div>
+
+          <div className="flex justify-between pt-1 pb-2 border-b border-white/5">
             <span className="text-secondaryText">Transactions</span>
             <span className="text-white">{summary.txCount}</span>
           </div>
-          <div className="flex justify-between pt-1">
-            <span className="text-secondaryText text-xs">Burn Rate Formula</span>
-            <span className="text-white/60 text-xs text-right">
-               ∑ Debits (₹{summary.totalDebits.toLocaleString()}) <br/> / {summary.actualDaysSpanned || Math.max(1, Math.round(summary.totalDebits / (summary.averageDailySpend || 1)))} Days
-            </span>
+
+          <div className="pt-2 border-t border-white/5 mt-2">
+            <div className="flex justify-between items-baseline mb-1">
+               <span className="text-secondaryText text-xs uppercase tracking-wider">Burn Rate Analysis</span>
+               <span className="text-white font-medium">₹{summary.averageDailySpend} <span className="text-[10px] text-secondaryText">/ day</span></span>
+            </div>
+            <p className="text-[10px] text-white/40 leading-relaxed italic">
+               Calculated as Total Outflow (₹{summary.totalDebits.toLocaleString()}) divided by the statement duration of {summary.actualDaysSpanned} days.
+            </p>
           </div>
         </Card>
       </section>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Card from '../components/Card';
 import GuiltMeter from '../components/GuiltMeter';
 import api from '../services/api';
@@ -15,10 +15,19 @@ export default function Simulator() {
   const [chatMessage, setChatMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [chatting, setChatting] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
   
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
   useEffect(() => {
      api.get('/simulate/chat').then(res => setChatHistory(res.data.chats)).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatHistory, chatting]);
 
   const simulate = async () => {
     setLoading(true);
@@ -36,16 +45,17 @@ export default function Simulator() {
     }
   };
 
-  const runChat = async () => {
-    if (!chatMessage.trim()) return;
+  const runChat = async (input?: string) => {
+    const msgToSubmit = input || chatMessage;
+    if (!msgToSubmit.trim()) return;
     
-    const newMessage = { role: 'user', content: chatMessage };
+    const newMessage = { role: 'user', content: msgToSubmit };
     setChatHistory(prev => [...prev, newMessage]);
     setChatMessage('');
     setChatting(true);
     
     try {
-      const res = await api.post('/simulate/chat', { message: newMessage.content });
+      const res = await api.post('/simulate/chat', { message: msgToSubmit });
       setChatHistory(prev => [...prev, { role: 'assistant', content: res.data.reply }]);
     } catch (err) {
       console.error(err);
@@ -56,6 +66,12 @@ export default function Simulator() {
   };
 
   if(!report) return <div className="p-6 pt-12">Upload statement to simulate.</div>;
+
+  const suggestions = [
+    "Can I afford a new iPhone next month?",
+    "What if I travel for 5 days?",
+    "Impact of ₹10,000 credit card bill?"
+  ];
 
   return (
     <div className="p-6 pt-12 space-y-6">
@@ -136,42 +152,65 @@ export default function Simulator() {
             </Card>
         )}
 
-        <div className="mt-10 border-t border-white/10 pt-8 space-y-4 pb-10">
-          <h2 className="text-lg font-medium text-white/90">"What If?" Scenarios</h2>
-          <p className="text-sm text-secondaryText mb-2">Ask the AI Copilot how specific purchases will impact your metrics.</p>
+        <div className="mt-10 border-t border-white/10 pt-8 space-y-4 pb-20">
+          <div className="flex items-center justify-between mb-4">
+             <div>
+                <h2 className="text-lg font-medium text-white/90">"What If?" Scenarios</h2>
+                <p className="text-xs text-secondaryText">Ask the AI Copilot about specific spends.</p>
+             </div>
+             <div className="bg-white/10 px-2 py-1 rounded-md text-[10px] uppercase font-bold text-white/60 border border-white/5">AI Advisor</div>
+          </div>
 
-          <Card className="bg-card/40 border-white/5 h-72 overflow-y-auto space-y-3 p-4 flex flex-col mb-2">
+          <Card className="bg-card/40 border-white/5 h-96 overflow-y-auto space-y-4 p-4 flex flex-col mb-4 custom-scrollbar">
             {chatHistory.length === 0 && (
-              <p className="text-xs text-secondaryText text-center m-auto">Start a simulation conversation here.</p>
+              <div className="m-auto text-center space-y-2 opacity-50">
+                 <span className="text-3xl block">🤖</span>
+                 <p className="text-xs text-secondaryText">I'm aware of your {report.statementSummary.txCount} transactions. Ask me anything!</p>
+              </div>
             )}
             {chatHistory.map((msg, i) => (
                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                 <div className={`max-w-[85%] p-3 rounded-2xl text-sm leading-relaxed ${msg.role === 'user' ? 'bg-white text-black rounded-br-sm' : 'bg-white/10 text-white/90 rounded-bl-sm border border-white/5'}`}>
+                 <div className={`max-w-[85%] p-3.5 rounded-2xl text-[13px] leading-relaxed shadow-sm ${msg.role === 'user' ? 'bg-white text-black rounded-tr-none' : 'bg-white/10 text-white/90 rounded-tl-none border border-white/10'}`}>
                    {msg.content}
                  </div>
                </div>
             ))}
             {chatting && (
                <div className="flex justify-start">
-                 <div className="max-w-[85%] p-3 rounded-2xl text-sm bg-white/10 text-white/50 rounded-bl-sm border border-white/5 animate-pulse">
-                   Thinking...
+                 <div className="max-w-[85%] p-3.5 rounded-2xl text-sm bg-white/10 text-white/50 rounded-tl-none border border-white/10 flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce"></span>
+                    <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce delay-75"></span>
+                    <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce delay-150"></span>
                  </div>
                </div>
             )}
+            <div ref={chatEndRef} />
           </Card>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
+             {suggestions.map((s, idx) => (
+               <button 
+                  key={idx} 
+                  onClick={() => runChat(s)}
+                  className="whitespace-nowrap px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[11px] text-secondaryText hover:bg-white/10 transition-colors"
+                >
+                  {s}
+               </button>
+             ))}
+          </div>
+
+          <div className="flex gap-2 sticky bottom-4 z-10 bg-black/40 backdrop-blur-sm p-1 rounded-2xl border border-white/5">
             <input 
-               className="flex-1 bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-3 outline-none focus:border-white/30 transition-colors"
-               placeholder="What if I buy a car worth 5 Lakhs now?"
+               className="flex-1 bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-4 outline-none focus:border-white/30 transition-colors"
+               placeholder="What if I spend 2k on drinks tonight?"
                value={chatMessage}
                onChange={(e) => setChatMessage(e.target.value)}
                onKeyDown={(e) => e.key === 'Enter' && runChat()}
             />
             <button 
-               onClick={runChat}
+               onClick={() => runChat()}
                disabled={chatting || !chatMessage.trim()}
-               className="bg-white text-black px-5 rounded-xl font-medium text-sm active:scale-95 transition-transform disabled:opacity-50"
+               className="bg-white text-black px-6 rounded-xl font-semibold text-sm active:scale-95 transition-transform disabled:opacity-50"
             >
               Ask
             </button>

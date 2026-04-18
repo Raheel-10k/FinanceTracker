@@ -19,6 +19,7 @@ export default function Login() {
     try {
       const res = await api.post('/auth/login', { email, password });
       setToken(res.data.token);
+      useAppStore.getState().setUser(res.data.user);
       navigate('/app');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed');
