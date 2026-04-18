@@ -1,7 +1,7 @@
 import { useAppStore } from '../store/useAppStore';
 import { Navigate } from 'react-router-dom';
 import Card from '../components/Card';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 
@@ -9,43 +9,85 @@ export default function Analysis() {
   const { report, setReport } = useAppStore();
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
-  const handleCategorize = async (description: string, category: string, amountValue: number, dateValue: Date, sourceCategoryId: string) => {
-    try {
-      await api.post('/user/rules', { descriptionPattern: description, category });
-      
-      // Local UI Optimistic Update (Bulk Move)
-      if (report) {
+  const getSignificantKeywords = (desc: string) => {
+    // 1. Clean the string: remove numbers, slashes, and common noise
+    const noise = ['UPI', 'PAYTM', 'TRANSFER', 'CR', 'DR', 'SETTLEMENT', 'ORDER', 'RETAIL', 'PVT', 'LTD'];
+    const cleaned = desc
+      .toUpperCase()
+      .replace(/[0-9]/g, ' ')
+      .replace(/[^A-Z\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // 2. Split into words and filter out noise/short words
+    const words = cleaned.split(' ').filter(w => 
+      w.length > 2 && !noise.includes(w)
+    );
+
+    return words;
+  };
+
+  const handleCategorize = async (fullDescription: string, category: string, amountValue: number, dateValue: Date, sourceCategoryId: string) => {
+    const keywords = getSignificantKeywords(fullDescription);
+    const patternForBackend = keywords.join(' '); // We'll save the keywords as a space-separated rule
+    
+    if (keywords.length === 0) {
+      setToast({ message: 'Description too vague for automatic matching.', type: 'error' });
+      return;
+    }
+
+    // 1. Optimistic UI Update (Keyword based)
+    if (report) {
+      try {
         const updatedReport = JSON.parse(JSON.stringify(report));
         const sourceCat = updatedReport.categoryTotals[sourceCategoryId];
         const targetCat = updatedReport.categoryTotals[category];
 
-        // Find all matching transactions in the current source category
-        const matchingTxs = sourceCat.transactions.filter((t: any) => 
-          t.description.toUpperCase().includes(description.toUpperCase())
-        );
+        if (!sourceCat || !targetCat) return;
+
+        // MATCHING LOGIC: All target keywords must be present in the transaction description
+        const isMatch = (tDesc: string) => {
+          const upperTDesc = tDesc.toUpperCase();
+          return keywords.every(kw => upperTDesc.includes(kw));
+        };
+
+        const matchingTxs = sourceCat.transactions.filter((t: any) => isMatch(t.description));
 
         if (matchingTxs.length > 0) {
-          // 1. Remove all matching from source
-          sourceCat.transactions = sourceCat.transactions.filter((t: any) => 
-            !t.description.toUpperCase().includes(description.toUpperCase())
-          );
+          sourceCat.transactions = sourceCat.transactions.filter((t: any) => !isMatch(t.description));
           
           const totalAmountMoved = matchingTxs.reduce((sum: number, t: any) => sum + t.amount, 0);
           sourceCat.total -= totalAmountMoved;
 
-          // 2. Add all to target
           targetCat.transactions.push(...matchingTxs);
           targetCat.total += totalAmountMoved;
 
           setReport(updatedReport);
-          alert(`Success! Moved ${matchingTxs.length} transactions matching "${description}" to ${category}. This rule will also be applied to all future statement uploads.`);
+          setToast({ message: `Successfully moved ${matchingTxs.length} transactions matching "${patternForBackend}" to ${category}.`, type: 'success' });
         }
+      } catch (uiErr) {
+        console.error('UI Update Error:', uiErr);
       }
+    }
+
+    // 2. Persist to backend
+    try {
+      await api.post('/user/rules', { descriptionPattern: patternForBackend, category });
     } catch (err) {
-      console.error(err);
-      alert('Failed to save rule. Please try again.');
+      console.error('Backend Save Error:', err);
+      setToast({ message: 'Sync delayed, but change applied for now.', type: 'error' });
     }
   };
+
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+
+  // Auto-hide toast
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   if (!report) return <Navigate to="/app" />;
 
@@ -248,6 +290,25 @@ export default function Analysis() {
           </Card>
         </div>
       </section>
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed bottom-8 left-6 right-6 z-50 pointer-events-none flex justify-center"
+          >
+            <div className={`px-4 py-3 rounded-2xl shadow-2xl border backdrop-blur-xl flex items-center gap-3 max-w-sm w-full ${
+              toast.type === 'success' 
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                : 'bg-red-500/10 border-red-500/20 text-red-400'
+            }`}>
+              <div className={`w-2 h-2 rounded-full animate-pulse ${toast.type === 'success' ? 'bg-emerald-400' : 'bg-red-400'}`} />
+              <p className="text-xs font-medium leading-tight">{toast.message}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
