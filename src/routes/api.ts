@@ -15,6 +15,7 @@ import {
   getChatHistory,
   simulateChat
 } from '../controllers/dashboard';
+import { addUserRule } from '../controllers/user';
 
 const router = Router();
 
@@ -43,6 +44,7 @@ router.get('/history', auth, getHistory);
 router.post('/simulate', auth, simulate);
 router.get('/simulate/chat', auth, getChatHistory);
 router.post('/simulate/chat', auth, simulateChat);
+router.post('/user/rules', auth, addUserRule);
 router.delete('/user/data', auth, deleteUserData);
 
 export default router;

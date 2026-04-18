@@ -42,8 +42,18 @@ const reportSchema = new mongoose.Schema({
       total: { type: Number, default: 0 },
       transactions: [{ date: Date, description: String, amount: Number }]
     },
-    other: { type: Number, default: 0 }
+    other: { 
+      total: { type: Number, default: 0 },
+      transactions: [{ date: Date, description: String, amount: Number }]
+    }
   }
 }, { timestamps: true });
 
+const userRuleSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  descriptionPattern: { type: String, required: true },
+  category: { type: String, required: true, enum: ['shopping', 'food', 'quickComm'] }
+}, { timestamps: true });
+
 export const Report = mongoose.model('Report', reportSchema);
+export const UserRule = mongoose.model('UserRule', userRuleSchema);

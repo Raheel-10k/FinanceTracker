@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Upload } from '../models/Upload';
 import { Transaction } from '../models/Transaction';
-import { Report } from '../models/Report';
+import { Report, UserRule } from '../models/Report';
 import { parseCSV } from '../parsers/csv';
 import { parsePDF } from '../parsers/pdf';
 import { generateAIInsights } from '../ai/groq';
@@ -136,18 +136,39 @@ export const uploadStatement = async (req: Request, res: Response) => {
     const foodVendors = ['SWIGGY', 'ZOMATO'];
     const quickCommVendors = ['ZEPTO', 'BLINKIT'];
 
+    const userRules = await UserRule.find({ userId });
+    
     let shoppingTotal = 0;
     let foodTotal = 0;
     let quickCommTotal = 0;
+    let otherTotal = 0;
     
     const shoppingTxs: any[] = [];
     const foodTxs: any[] = [];
     const quickCommTxs: any[] = [];
+    const otherTxs: any[] = [];
 
     allTxs.forEach(t => {
       if (t.type === 'debit') {
         const desc = (t.description || '').toUpperCase();
-        if (shoppingVendors.some(v => desc.includes(v))) {
+        
+        // 1. Check User Rules first
+        const applicableRule = userRules.find(r => desc.includes(r.descriptionPattern.toUpperCase()));
+        
+        if (applicableRule) {
+          if (applicableRule.category === 'shopping') {
+            shoppingTotal += t.amount;
+            shoppingTxs.push({ date: t.date, description: t.description, amount: t.amount });
+          } else if (applicableRule.category === 'food') {
+            foodTotal += t.amount;
+            foodTxs.push({ date: t.date, description: t.description, amount: t.amount });
+          } else if (applicableRule.category === 'quickComm') {
+            quickCommTotal += t.amount;
+            quickCommTxs.push({ date: t.date, description: t.description, amount: t.amount });
+          }
+        } 
+        // 2. Check Standard Heuristics
+        else if (shoppingVendors.some(v => desc.includes(v))) {
           shoppingTotal += t.amount;
           shoppingTxs.push({ date: t.date, description: t.description, amount: t.amount });
         } else if (foodVendors.some(v => desc.includes(v))) {
@@ -156,6 +177,11 @@ export const uploadStatement = async (req: Request, res: Response) => {
         } else if (quickCommVendors.some(v => desc.includes(v))) {
           quickCommTotal += t.amount;
           quickCommTxs.push({ date: t.date, description: t.description, amount: t.amount });
+        } 
+        // 3. Collect everything else as Other
+        else {
+          otherTotal += t.amount;
+          otherTxs.push({ date: t.date, description: t.description, amount: t.amount });
         }
       }
     });
@@ -164,7 +190,7 @@ export const uploadStatement = async (req: Request, res: Response) => {
       shopping: { total: Math.round(shoppingTotal), transactions: shoppingTxs },
       food: { total: Math.round(foodTotal), transactions: foodTxs },
       quickComm: { total: Math.round(quickCommTotal), transactions: quickCommTxs },
-      other: Math.round(totalDebits - (shoppingTotal + foodTotal + quickCommTotal))
+      other: { total: Math.round(otherTotal), transactions: otherTxs }
     };
 
     // Heuristics Score calculation
