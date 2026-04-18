@@ -8,6 +8,15 @@ export default function Analysis() {
   if (!report) return <Navigate to="/app" />;
 
   const summary = report.statementSummary;
+  
+  const getRelevantEmoji = (insight: string) => {
+    const text = insight.toLowerCase();
+    if (text.includes('burn') || text.includes('deplete') || text.includes('month')) return '🔥';
+    if (text.includes('micro') || text.includes('leaks') || text.includes('draining')) return '💧';
+    if (text.includes('largest') || text.includes('represents') || text.includes('%')) return '💰';
+    if (text.includes('stable') || text.includes('pacy') || text.includes('good')) return '✅';
+    return '✨';
+  };
 
   return (
     <div className="p-6 pt-12 space-y-6">
@@ -81,7 +90,7 @@ export default function Analysis() {
           {report.insights.map((insight: string, idx: number) => (
             <Card key={idx}>
               <div className="flex items-start gap-3">
-                <span className="text-white mt-1">✨</span>
+                <span className="text-white mt-1">{getRelevantEmoji(insight)}</span>
                 <div>
                   <p className="text-sm text-white/90">{insight}</p>
                 </div>

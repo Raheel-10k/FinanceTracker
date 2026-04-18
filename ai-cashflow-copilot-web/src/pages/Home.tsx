@@ -136,7 +136,11 @@ export default function Home() {
                 <input type="file" className="hidden" accept=".pdf,.csv" onChange={handleFileUpload} disabled={uploading}/>
              </label>
         </div>
-        <p className="text-secondaryText text-sm mt-1">{report.aiNarrative || "Your finances are stable this week."}</p>
+        <div className="mt-4 p-4 rounded-r-2xl bg-white/[0.02] border-l-2 border-white/10 hover:border-emerald-500/50 hover:bg-white/[0.03] transition-all duration-500 group cursor-default">
+          <p className="text-[13px] leading-relaxed text-secondaryText italic group-hover:text-white/90 transition-colors duration-500">
+            "{report.aiNarrative || "Your spending patterns indicate a high survival rate this cycle. Keep pacy."}"
+          </p>
+        </div>
       </header>
 
       {/* Main Stats */}

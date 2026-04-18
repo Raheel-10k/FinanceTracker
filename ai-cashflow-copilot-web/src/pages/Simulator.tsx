@@ -146,9 +146,11 @@ export default function Simulator() {
                 <GuiltMeter score={result.newGuiltScore} />
                 </div>
 
-                <p className="text-xs text-white/90 bg-white/5 p-3 rounded-xl border border-white/5 italic">
-                    {result.aiAdvice}
-                </p>
+                <div className="mt-4 p-4 rounded-r-xl bg-white/[0.03] border-l-2 border-white/10 hover:border-white/40 transition-all duration-500 group">
+                    <p className="text-[13px] leading-relaxed text-secondaryText italic group-hover:text-white/90 transition-colors duration-500">
+                        "{result.aiAdvice}"
+                    </p>
+                </div>
             </div>
             </Card>
         )}
